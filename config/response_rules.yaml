@@ -1,0 +1,53 @@
+# Gmail Auto-Responder Rules Configuration
+
+rules:
+  # Business inquiry auto-response
+  - name: "business_inquiry"
+    conditions:
+      - subject_contains: ["inquiry", "business", "partnership", "collaboration"]
+      - from_domain_not: ["gmail.com", "hotmail.com", "yahoo.com"]  # Skip personal emails
+    response_template: "business_inquiry"
+    priority: 1
+
+  # Job application responses
+  - name: "job_applications"
+    conditions:
+      - subject_contains: ["application", "resume", "cv", "position", "job"]
+      - has_attachments: true
+    response_template: "job_application"
+    priority: 2
+
+  # Support requests
+  - name: "support_requests"
+    conditions:
+      - subject_contains: ["help", "support", "issue", "problem", "bug"]
+    response_template: "support"
+    priority: 3
+
+  # Meeting requests
+  - name: "meeting_requests"
+    conditions:
+      - subject_contains: ["meeting", "call", "discuss", "chat", "schedule"]
+    response_template: "meeting_request"
+    priority: 4
+
+  # Default catch-all (lowest priority)
+  - name: "general"
+    conditions: []  # Matches any email not caught by other rules
+    response_template: "general"
+    priority: 10
+
+# Exclusion rules - emails that should NEVER get auto-responses
+exclusions:
+  - from_addresses: ["noreply@", "no-reply@", "donotreply@"]
+  - subject_contains: ["unsubscribe", "automated", "notification"]
+  - from_domain: ["facebook.com", "twitter.com", "linkedin.com", "github.com"]
+
+# Time restrictions
+schedule:
+  business_hours_only: false  # Set to true to only respond during business hours
+  business_hours:
+    start: "09:00"
+    end: "17:00"
+    timezone: "America/Toronto"  # Adjust to your timezone
+    weekdays_only: true
