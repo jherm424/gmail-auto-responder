@@ -61,16 +61,26 @@
    python src/main.py --once --test-mode
    ```
 
-3. **Single run (sends actual emails)**
+3. **Single run (creates drafts)**
    ```bash
-   python src/main.py --once
+   python src/main.py --once --draft-mode
+   ```
+
+4. **Single run (actually sends emails - use with caution)**
+   ```bash
+   python src/main.py --once --send-mode
    ```
 
 ## Step 4: Production Deployment
 
-1. **Run continuously**
+1. **Run continuously (creates drafts)**
    ```bash
-   python src/main.py
+   python src/main.py --draft-mode
+   ```
+
+2. **Run continuously (actually sends emails - use with extreme caution)**
+   ```bash
+   python src/main.py --send-mode
    ```
 
 2. **Run as system service (optional)**
@@ -80,11 +90,14 @@
 ## Important Security Notes
 
 ⚠️ **Security Considerations:**
+- **Application creates drafts by default - never sends emails automatically**
 - Keep `credentials.json` and `token.json` secure
 - Never commit credentials to version control
 - Use test mode first to verify behavior
+- Review all drafts in Gmail before sending
 - Review response templates carefully
 - Monitor logs for unexpected behavior
+- Use `--send-mode` only when absolutely certain
 
 ## Troubleshooting
 

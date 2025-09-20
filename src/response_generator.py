@@ -75,8 +75,8 @@ This is an automated response."""
         from datetime import datetime
         return datetime.now().strftime("%B %d, %Y")
 
-    def send_response(self, original_email, response_content, test_mode=True):
-        """Send automated response email"""
+    def create_draft_response(self, original_email, response_content, test_mode=True):
+        """Create draft response email instead of sending"""
         try:
             # Parse response content to extract subject and body
             lines = response_content.strip().split('\n')
@@ -93,7 +93,7 @@ This is an automated response."""
             body = '\n'.join(lines[body_start:])
 
             if test_mode:
-                print(f"🧪 TEST MODE - Would send response:")
+                print(f"🧪 TEST MODE - Would create draft:")
                 print(f"To: {original_email['from']}")
                 print(f"Subject: {subject}")
                 print(f"Body preview: {body[:100]}...")
@@ -112,21 +112,33 @@ This is an automated response."""
             # Encode message
             raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
 
-            # Send email
-            send_result = self.service.users().messages().send(
+            # Create draft instead of sending
+            draft_body = {
+                'message': {
+                    'raw': raw_message,
+                    'threadId': original_email.get('thread_id')
+                }
+            }
+
+            draft_result = self.service.users().drafts().create(
                 userId='me',
-                body={'raw': raw_message, 'threadId': original_email.get('thread_id')}
+                body=draft_body
             ).execute()
 
-            print(f"✅ Response sent successfully to {original_email['from']}")
+            print(f"✅ Draft created successfully for {original_email['from']} (Draft ID: {draft_result['id']})")
             return True
 
         except HttpError as e:
-            print(f"❌ Error sending response: {e}")
+            print(f"❌ Error creating draft: {e}")
             return False
         except Exception as e:
-            print(f"❌ Unexpected error sending response: {e}")
+            print(f"❌ Unexpected error creating draft: {e}")
             return False
+
+    def send_response(self, original_email, response_content, test_mode=True):
+        """Legacy method - now creates drafts instead of sending"""
+        print("⚠️  Note: Creating draft instead of sending email for safety")
+        return self.create_draft_response(original_email, response_content, test_mode)
 
     def validate_template(self, template_name):
         """Validate that template exists and is properly formatted"""

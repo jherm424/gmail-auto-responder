@@ -40,6 +40,7 @@ class GmailAutoResponder:
 
         # Runtime settings
         self.test_mode = os.getenv('TEST_MODE', 'true').lower() == 'true'
+        self.draft_mode = os.getenv('DRAFT_MODE', 'true').lower() == 'true'
         self.check_interval = int(os.getenv('CHECK_INTERVAL_MINUTES', 5))
         self.max_emails_per_run = int(os.getenv('MAX_EMAILS_PER_RUN', 10))
 
@@ -97,6 +98,8 @@ class GmailAutoResponder:
 
         if self.test_mode:
             self.logger.warning("🧪 RUNNING IN TEST MODE - No emails will be sent")
+        elif self.draft_mode:
+            self.logger.info("📝 RUNNING IN DRAFT MODE - Creating drafts instead of sending emails")
 
         return True
 
@@ -127,19 +130,31 @@ class GmailAutoResponder:
                     )
 
                     if should_respond:
-                        self.logger.info(f"Auto-responding with rule: {rule_name}, template: {template_name}")
+                        if self.draft_mode:
+                            self.logger.info(f"Creating draft with rule: {rule_name}, template: {template_name}")
+                        else:
+                            self.logger.info(f"Auto-responding with rule: {rule_name}, template: {template_name}")
 
                         # Generate response
                         response_content = self.responder.generate_response(
                             email_data, template_name
                         )
 
-                        # Send response
-                        if self.responder.send_response(email_data, response_content, self.test_mode):
-                            responses_sent += 1
-                            self.monitor.mark_as_processed(email_data['id'])
+                        # Create draft or send response based on mode
+                        if self.draft_mode and not self.test_mode:
+                            # Create draft
+                            if self.responder.create_draft_response(email_data, response_content, False):
+                                responses_sent += 1
+                                self.monitor.mark_as_processed(email_data['id'])
+                            else:
+                                self.logger.error(f"Failed to create draft for {email_data['from']}")
                         else:
-                            self.logger.error(f"Failed to send response to {email_data['from']}")
+                            # Use legacy send method (which now creates drafts too)
+                            if self.responder.send_response(email_data, response_content, self.test_mode):
+                                responses_sent += 1
+                                self.monitor.mark_as_processed(email_data['id'])
+                            else:
+                                self.logger.error(f"Failed to create response for {email_data['from']}")
 
                     else:
                         self.logger.info("Email does not match auto-response rules")
@@ -148,7 +163,10 @@ class GmailAutoResponder:
                 except Exception as e:
                     self.logger.error(f"Error processing email {email_data.get('id', 'unknown')}: {e}")
 
-            self.logger.info(f"Processed {len(emails)} emails, sent {responses_sent} responses")
+            if self.draft_mode and not self.test_mode:
+                self.logger.info(f"Processed {len(emails)} emails, created {responses_sent} drafts")
+            else:
+                self.logger.info(f"Processed {len(emails)} emails, sent {responses_sent} responses")
 
             # Update last check time
             self.monitor.update_last_check()
@@ -220,15 +238,21 @@ def main():
     parser.add_argument('--once', action='store_true', help='Run once and exit')
     parser.add_argument('--validate', action='store_true', help='Validate setup and exit')
     parser.add_argument('--test-mode', action='store_true', help='Run in test mode (no emails sent)')
+    parser.add_argument('--draft-mode', action='store_true', help='Create drafts instead of sending emails')
+    parser.add_argument('--send-mode', action='store_true', help='Send emails directly (overrides draft mode)')
 
     args = parser.parse_args()
 
     # Create app instance
     app = GmailAutoResponder()
 
-    # Override test mode if specified
+    # Override modes if specified
     if args.test_mode:
         app.test_mode = True
+    if args.draft_mode:
+        app.draft_mode = True
+    if args.send_mode:
+        app.draft_mode = False
 
     if args.validate:
         # Validate setup
