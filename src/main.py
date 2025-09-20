@@ -215,6 +215,10 @@ class GmailAutoResponder:
             self.logger.info("Download credentials.json from Google Cloud Console and place in config/")
             return False
 
+        # Initialize responder for validation
+        if not self.responder:
+            self.responder = ResponseGenerator(None)  # Don't need service for validation
+
         # Validate templates
         templates_dir = 'templates'
         rules = self.config.get('rules', [])
